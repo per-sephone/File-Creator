@@ -13,6 +13,7 @@
 const int MAXLEN = 20;
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
+unsigned int seed = 0;
 
 struct files {
     char** paths; //file paths
@@ -54,38 +55,14 @@ void createFileNames(char* paths[], char* location, unsigned int* numOfFiles)
     }
 }
 
-//single thread creates a single file
-void* createFiles(void* param)
+void writeFiles(struct files* fi, unsigned int* s, int* fileDesc)
 {
-    struct files* f = (struct files*) param;
-
-    pthread_mutex_lock(&lock);
-    printf("Thread %i working\n", f->threadKey +1);
-    for(int i = 0; i < f->numFiles; i++)
-    {
-        if(i % f->numThreads == f->threadKey)
-        {
-            f->fd[i] = open(f->paths[i], O_CREAT | O_EXCL | O_RDWR, 0600); //O_TRUNC??
-            if (f->fd[i] < 0)
-            {
-                printf("createFiles Error: %d, %s\n", errno, strerror(errno));
-                exit(-1);
-            }
-        }
-    }
-    f->threadKey+=1;
-    pthread_mutex_unlock(&lock);
-    return NULL;
-}
-
-void writeFiles(int* descriptors, unsigned int* numOfFiles, unsigned int* numOfInts, unsigned int* s)
-{
-    int32_t randNum = -1;
-
-    for(int i = 0; i < *numOfInts; i++)
+    
+    uint32_t randNum = -1;
+    for(int i = 0; i < fi->numInts; i++)
     {
         randNum = rand_r(s);
-        int success = write(*descriptors, &randNum, sizeof(unsigned int));
+        int success = write(*fileDesc, &randNum, sizeof(uint32_t));
         if(success < 0)
         {
             printf("writeFiles Error: %d, %s\n", errno, strerror(errno));
@@ -93,6 +70,36 @@ void writeFiles(int* descriptors, unsigned int* numOfFiles, unsigned int* numOfI
         }
     }
 }
+
+//single thread creates a single file
+void* createFiles(void* param)
+{
+    struct files* f = (struct files*) param;
+    unsigned int* seedPtr[f->numFiles];
+
+    pthread_mutex_lock(&lock);
+    printf("Thread %i working\n", f->threadKey +1);
+    for(int i = 0; i < f->numFiles; i++)
+    {
+        seedPtr[i] = &seed;
+        if(i % f->numThreads == f->threadKey)
+        {
+            f->fd[i] = open(f->paths[i], O_CREAT | O_EXCL | O_RDWR, 0700);
+            if (f->fd[i] < 0)
+            {
+                printf("createFiles Error: %d, %s\n", errno, strerror(errno));
+                exit(-1);
+            }
+            writeFiles(f, seedPtr[i], &f->fd[i]);
+        }
+    }
+    f->threadKey+=1;
+    pthread_mutex_unlock(&lock);
+
+    return NULL;
+}
+
+
 
 int main(int argc, char *argv[])
 {
@@ -115,14 +122,16 @@ int main(int argc, char *argv[])
     }
 
     struct files fileInfo;
-
     char* directoryLoc = argv[1];
-
-    //char directoryLoc[strlen(argv[1])+1];
-    strcpy(directoryLoc, argv[1]);
     fileInfo.numFiles = atoi(argv[2]);
     fileInfo.numInts = atoi(argv[3]);
     fileInfo.numThreads = atoi(argv[4]);
+
+    if(strcmp(&directoryLoc[strlen(directoryLoc)-1], "/") != 0)
+    {
+        strcat(directoryLoc, "/");
+
+    }
 
     //allocate for array of char*
     fileInfo.paths = malloc(sizeof(char*) * fileInfo.numFiles);
@@ -143,8 +152,7 @@ int main(int argc, char *argv[])
     fileInfo.threadKey = 0;
     int rc;
     pthread_t threads[fileInfo.numThreads];
-    unsigned int seed = 0;
-    unsigned int* seedPtr[fileInfo.numFiles];
+
 
     checkDir(directoryLoc);
 
@@ -176,8 +184,6 @@ int main(int argc, char *argv[])
 
     for(int i = 0; i < fileInfo.numFiles; i++)
     {
-        seedPtr[i] = &seed;
-        writeFiles(&fileInfo.fd[i], &fileInfo.numFiles, &fileInfo.numInts, seedPtr[i]);
         free(fileInfo.paths[i]);
         close(fileInfo.fd[i]);
     }
