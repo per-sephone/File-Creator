@@ -7,8 +7,8 @@ File Sorter reads each unsorted_<id>.bin file in directory D made by File Creato
 FileChecker checks the subset of files in <D>/sorted directory to make sure each file is correctly sorted version of the corresponding file in D using T threads.
 
 
-filecreator.c usage: ./filecreator <absolute-path> <num-files> <num-integers> <num-threads>
+filecreator.c usage: ./filecreator absolute-path  num-files  num-integers  num-threads
 
-filesorter.c usage: ./filesorter <absolute-path>
+filesorter.c usage: ./filesorter  absolute-path
 
-filechecker.c usage: ./filechecker <absolute-path> <num-threads>
+filechecker.c usage: ./filechecker  absolute-path  num-threads
