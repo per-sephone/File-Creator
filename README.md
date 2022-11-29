@@ -4,8 +4,11 @@ File Creator is a multi-threaded program that accepts four command line paramete
 
 File Sorter reads each unsorted_<id>.bin file in directory D made by File Creator. It sort the integers found in the file and write the sorted integers to a new file <D>/sorted/sorted_<id>.bin
 
+FileChecker checks the subset of files in <D>/sorted directory to make sure each file is correctly sorted version of the corresponding file in D using T threads.
 
 
-filecreator.c usage: ./filecreator absolute-path unsigned-int unsigned-int unsigned-int
+filecreator.c usage: ./filecreator absolute-path num-files num-integers num-threads
 
 filesorter.c usage: ./filesorter absolute-path
+
+filechecker.c usage: ./filechecker absolute-path num-threads
